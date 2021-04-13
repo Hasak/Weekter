@@ -1,10 +1,21 @@
 #include <htime.h>
 
-time_t TIME_LEFT = W_HOURS;
-bool IS_FINISHED = true;
-bool WAS_OFFSET = false;
-bool IS_STATUS = false;
+string NAME="Dummy";
+string FILENAME="dummy.txt";
+unsigned int W_HOURS=20*60*60;
+
 bool IS_DONE = false;
+bool IS_STATUS = false;
+bool WAS_OFFSET = false;
+bool IS_FINISHED = true;
+
+time_t TIME_LEFT = W_HOURS;
+
+
+bool exist(string path){
+    struct stat st;
+    return stat(path.c_str(),&st)==0;
+}
 
 string leadingZero(string s){
     return s.length()==1?"0"+s:s;
@@ -75,6 +86,28 @@ bool isFinish(string line){
     return line[line.find(DELIMETER)+1]=='F';
 }
 
+string getBasePath(){
+    return getenv("HOME");
+}
+
+string getDirPath(){
+    string ret="";
+    ret+=getBasePath();
+    ret+=FILE_DELIMETER;
+    ret+=DIRECTORY;
+    return ret;
+}
+
+string getFilePath(){
+    string ret="";
+    ret+=getBasePath();
+    ret+=FILE_DELIMETER;
+    ret+=DIRECTORY;
+    ret+=FILE_DELIMETER;
+    ret+=FILENAME;
+    return ret;
+}
+
 vector<time_t> getTimesFromFile(time_t from){
     time_t t;
     bool first;
@@ -83,7 +116,7 @@ vector<time_t> getTimesFromFile(time_t from){
     vector<time_t> times;
 
     first=true;
-    file.open(FILENAME);
+    file.open(getFilePath());
     if(file.peek()==ifstream::traits_type::eof())
         return times;
     while(getline(file,line)){
@@ -119,11 +152,12 @@ time_t calculate(vector<time_t> times, time_t from, time_t to){
 }
 
 string toString(struct tm *td, time_t total){
-
     string ret="";
     ret+=to_string(mktime(td));
     ret+=DELIMETER;
     ret+=IS_FINISHED?"S":"F";
+    ret+=DELIMETER;
+    ret+=NAME;
     ret+=DELIMETER;
     ret+=getTime(total);
     ret+=DELIMETER;
@@ -134,16 +168,16 @@ string toString(struct tm *td, time_t total){
 
 void toFile(string str){
     ofstream file;
-    file.open(FILENAME,ios::app);
+    file.open(getFilePath(),ios::app);
     file<<str<<endl;
     file.close();
 }
 
 string getTitle(){
     string ret="";
-    ret+=TITLE;
+    ret+=NAME;
     ret+=STRING_DELIMETER;
-    ret+=IS_DONE?IS_FINISHED?"Start"+STRING_DELIMETER+"FINISHED":"End"+STRING_DELIMETER+"FINISHED":IS_STATUS?"Status":IS_FINISHED?"Start":"End";
+    ret+=IS_DONE?IS_FINISHED?"Start"+STRING_DELIMETER+"FINISHED":"End"+STRING_DELIMETER+"FINISHED":IS_STATUS?IS_FINISHED?"Idle":"Running":IS_FINISHED?"Start":"End";
     return ret;
 }
 
@@ -179,19 +213,36 @@ string getString(time_t total, time_t lastSession){
     return ret;
 }
 
-void notify(time_t total, time_t lastSession){
+string baseNotify(){
     string str="";
     str+=COMMAND;
     str+=" ";
     str+=PARAMETERS;
     str+=" ";
+    return str;
+}
+
+void notify(time_t total, time_t lastSession){
+    string str="";
+    str+=baseNotify();
     str+=getString(total, lastSession);
+    system(str.c_str());
+}
+
+void notify(string title, string msg){
+    string str="";
+    str+=baseNotify();
+    str+="'";
+    str+=title;
+    str+="' '";
+    str+=msg;
+    str+="'";
     system(str.c_str());
 }
 
 bool hasParameter(int argc, char* argv[], string param){
     for(int i=0;i<argc;i++)
-        if(argv[i]==param)
+        if(param.compare(argv[i])==0)
             return true;
     return false;
 }
